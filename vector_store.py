@@ -18,7 +18,7 @@ def get_vector_store_retriever():
     # ⚡ THE SPEED FIX: If the database is already built, load it instantly
     if os.path.exists(index_dir):
         vectorstore = FAISS.load_local(index_dir, embeddings, allow_dangerous_deserialization=True)
-        return vectorstore.as_retriever(search_kwargs={"k": 5})
+        return vectorstore.as_retriever(search_type="mmr", search_kwargs={"k": 7, "fetch_k": 20})
 
     # If no database exists, build it from scratch
     if not os.path.exists(docs_dir) or not os.listdir(docs_dir):
@@ -45,4 +45,4 @@ def get_vector_store_retriever():
     # ⚡ Save to disk so we never have to wait 1 minute again
     vectorstore.save_local(index_dir)
     
-    return vectorstore.as_retriever(search_kwargs={"k": 5})
+    return vectorstore.as_retriever(search_type="mmr", search_kwargs={"k": 7, "fetch_k": 20})
