@@ -157,11 +157,3 @@ The embedding model downloads on first launch.
 A single continuous 13-turn conversation tests base retrieval, follow-up memory, technical accuracy, abrupt topic switches, long-term recall of the user's name, the GDPR-vs-AML legal conflict, escalation policy, out-of-domain refusals and citation accuracy. **13 / 13 turns pass.** See [QA_testing_protocol.md](QA_testing_protocol.md) for every question, answer and citation, plus engineering notes on the fixes.
 
 ---
-
-## Author
-
-**Priyanshu Agarwal**
-
-IIT Madras BS in Data Science and Applications
-
-DesiCrew Data Science Assessment Submission
