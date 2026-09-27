@@ -15,6 +15,10 @@ load_dotenv()
 
 st.set_page_config(page_title="AuraPay Support Assistant", page_icon="💳", layout="wide")
 
+def render_markdown(text):
+    # Escape "$" so amounts like "$15,000 ... $50,000" aren't rendered as LaTeX math
+    st.markdown(text.replace("$", "\\$"))
+
 # --- UI SIDEBAR: Persistent Reset Controls ---
 with st.sidebar:
     st.header("⚙️ Agent Controls")
@@ -77,13 +81,13 @@ for msg in st.session_state.messages:
                     st.markdown(f"**Chunk {i+1} from `{file_source}` (Section: {section_source}):**")
                     st.text(doc.page_content)
                     st.divider()
-        st.markdown(msg["content"])
+        render_markdown(msg["content"])
 
 # Primary runtime chat input event capture
 if prompt := st.chat_input("Ask about compliance, chargebacks, or APIs..."):
     st.session_state.messages.append({"role": "user", "content": prompt, "context": None})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        render_markdown(prompt)
 
     with st.chat_message("assistant"):
         with st.spinner("Searching AuraPay policies..."):
@@ -107,7 +111,7 @@ if prompt := st.chat_input("Ask about compliance, chargebacks, or APIs..."):
                         st.text(doc.page_content)
                         st.divider()
                 
-                st.markdown(answer)
+                render_markdown(answer)
                 
                 # Append to persistent storage blocks
                 st.session_state.messages.append({
