@@ -1,12 +1,13 @@
 # app.py
+import os
 import streamlit as st
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.messages import HumanMessage, AIMessage
 
 from vector_store import get_vector_store_retriever
-from prompts import CONTEXTUALIZE_PROMPT, QA_PROMPT
+from prompts import CONTEXTUALIZE_PROMPT, QA_PROMPT, DOCUMENT_PROMPT
 
 from dotenv import load_dotenv 
 
@@ -31,17 +32,27 @@ with st.sidebar:
 
 st.title("💳 AuraPay Enterprise Support Agent")
 
+if not os.getenv("AI_PIPE_KEY"):
+    st.error("AI_PIPE_KEY is not set. Add it to a `.env` file locally, or to the app's Secrets on Streamlit Cloud.")
+    st.stop()
+
 try:
     retriever = get_vector_store_retriever()
 except Exception as e:
     st.error(f"Initialization Failed: {str(e)}")
     st.stop()
 
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+# LLM served via AI Pipe (OpenAI-compatible proxy)
+llm = ChatOpenAI(
+    model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
+    base_url=os.getenv("LLM_BASE_URL", "https://aipipe.org/openai/v1"),
+    api_key=os.getenv("AI_PIPE_KEY"),
+    temperature=0,
+)
 
 # Build the complete RAG Pipeline execution graph
 history_aware_retriever = create_history_aware_retriever(llm, retriever, CONTEXTUALIZE_PROMPT)
-question_answer_chain = create_stuff_documents_chain(llm, QA_PROMPT)
+question_answer_chain = create_stuff_documents_chain(llm, QA_PROMPT, document_prompt=DOCUMENT_PROMPT)
 rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
 # Initialize Session State arrays on initial page layout instantiation

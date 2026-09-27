@@ -15,7 +15,52 @@ Unlike a generic chatbot, the assistant is grounded exclusively on company docum
 
 ## 🚀 Live Demo
 
-https://desicrew-ds-assessment-776zueaju5dsv9hgfq93ph.streamlit.app/
+_Add your Streamlit Cloud URL here after deploying (see [Deploy to Streamlit Cloud](#-deploy-to-streamlit-cloud))._
+
+---
+
+## ⚙️ Setup & Run
+
+Requires Python 3.12.
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate           # Windows  (macOS/Linux: source .venv/bin/activate)
+pip install -r requirements.txt
+```
+
+`requirements.txt` pulls the CPU-only build of PyTorch (for `sentence-transformers`), which keeps the install small.
+
+Copy `.env.example` to `.env` and add your token:
+
+```env
+AI_PIPE_KEY=your_aipipe_token
+# Optional overrides
+# LLM_MODEL=gpt-4o-mini
+# LLM_BASE_URL=https://aipipe.org/openai/v1
+```
+
+Get a token at [aipipe.org](https://aipipe.org). The LLM is called through AI Pipe's OpenAI-compatible endpoint, so any OpenAI-compatible provider works by changing `LLM_BASE_URL` and `LLM_MODEL`.
+
+Run:
+
+```bash
+streamlit run app.py
+```
+
+The embedding model (`all-MiniLM-L6-v2`) runs locally and is downloaded on first launch. The FAISS index in `faiss_index/` is committed to the repository and is rebuilt automatically from `knowledge_base/` if it is deleted.
+
+---
+
+## ☁️ Deploy to Streamlit Cloud
+
+1. Push this repository to GitHub.
+2. On [share.streamlit.io](https://share.streamlit.io), click **Create app** and select the repository, branch `main` and main file `app.py`.
+3. Under **Advanced settings**, choose Python **3.12** and add the secret:
+   ```toml
+   AI_PIPE_KEY = "your_aipipe_token"
+   ```
+4. Click **Deploy**. The first boot takes a few minutes while PyTorch and the embedding model download.
 
 ---
 
@@ -134,7 +179,7 @@ FAISS Vector Search
 Relevant Document Chunks
       │
       ▼
-Llama 3.3 70B
+GPT-4o mini (AI Pipe)
       │
       ▼
 Grounded Response
@@ -148,12 +193,16 @@ Source Citation
 ## Project Structure
 
 ```text
-task2_support_bot/
+aurapay-support-bot/
 │
-├── app.py
-├── prompts.py
-├── vector_store.py
-├── setup_docs.py
+├── app.py                  # Streamlit UI + RAG chain
+├── prompts.py              # Contextualization, QA and document prompts
+├── vector_store.py         # FAISS index load/build
+├── setup_docs.py           # Generates the knowledge base
+├── check_chunks.py         # Prints the number of indexed chunks
+├── requirements.txt
+├── .env.example
+├── QA_testing_protocol.md
 │
 ├── knowledge_base/
 │   ├── 1_kyc_aml_compliance.md
@@ -323,11 +372,22 @@ The assistant is instructed to:
 - Never invent policies
 - Never guess answers
 - Return explicit refusal when information is unavailable
+- Use facts the user shared earlier in the conversation (e.g. their name or processing volume) from chat history
+- Cite the source document and section whenever documentation is used
 
 Fallback response:
 
 ```text
 I do not have that information in my current documentation.
+```
+
+### Citation Metadata
+
+`create_stuff_documents_chain` only passes each chunk's text to the LLM by default, so the model cannot see the source metadata it is asked to cite. A `DOCUMENT_PROMPT` prefixes every retrieved chunk with its `source_file` and `Section`:
+
+```text
+[source_file: 3_api_integration_guidelines.md | Section: Rate Limiting]
+<chunk text>
 ```
 
 
@@ -397,7 +457,25 @@ Correctly extracted from dispute resolution policy.
 
 ### Long-Term Memory Testing
 
-A user's name was introduced early in the conversation and correctly recalled several turns later, demonstrating full historical context retention. 
+A user's name was introduced at turn 5 and correctly recalled at turn 12 ("Yes, your name is Priyanshu Agarwal."), demonstrating full historical context retention.
+
+---
+
+### GDPR / Legal Conflict Testing
+
+Query (turn 9):
+
+```text
+One of my European customers used the 'Right to be Forgotten' under GDPR. Can I delete their transaction history?
+```
+
+Result:
+
+```text
+No. Financial regulations supersede GDPR deletion requests. Transaction records, KYC documents and
+chargeback history must be retained for 5 years to comply with AML laws.
+```
+
 ---
 
 ### Out-of-Domain Testing
@@ -418,6 +496,10 @@ The assistant correctly refused to hallucinate information.
 
 ---
 
+**Full results:** 13 / 13 turns passed in a single continuous conversation. See [QA_testing_protocol.md](QA_testing_protocol.md) for every query, answer and citation.
+
+---
+
 ## Limitations Observed
 
 ### Context Dilution
@@ -426,7 +508,7 @@ During very long conversations, retrieval quality may degrade because the reform
 
 Observed Example:
 
-A GDPR-related question failed retrieval after several unrelated conversation turns.
+With the original Llama 3.3 setup, a GDPR-related question at turn 9 failed retrieval after several unrelated conversation turns. With GPT-4o mini the same turn now retrieves the correct GDPR section, but the risk remains for much longer sessions because the full history is always sent.
 
 Potential Production Solution:
 
@@ -445,8 +527,7 @@ Potential Production Solution:
 
 ### LLM
 
-- Groq
-- Llama 3.3 70B Versatile
+- GPT-4o mini via [AI Pipe](https://aipipe.org) (OpenAI-compatible API)
 
 ### Framework
 
