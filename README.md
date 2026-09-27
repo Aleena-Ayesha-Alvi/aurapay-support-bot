@@ -15,7 +15,7 @@ Unlike a generic chatbot, the assistant is grounded exclusively on company docum
 
 ## 🚀 Live Demo
 
-_Add your Streamlit Cloud URL here after deploying (see [Deploy to Streamlit Cloud](#-deploy-to-streamlit-cloud))._
+https://aurapay-support-bot-5d92t5d3lshhnwnzlinoba.streamlit.app/
 
 ---
 
